@@ -1,0 +1,19 @@
+[project]
+name = "market-analytics"
+version = "0.1.0"
+description = ""
+authors = [
+    { name = "yuto82", email = "rgritsal@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = []
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [
+    { include = "market_analytics", from = "src" }
+]
