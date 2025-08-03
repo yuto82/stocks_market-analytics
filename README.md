@@ -5,3 +5,6 @@ how to set-up poetry:
 4. mkdir src/market_analytics
 5. touch src/market_analytics/__init__.py
 6. poetry install
+7. poetry env info --path
+8. source .../.venv/bin/activate
+9. deactivate

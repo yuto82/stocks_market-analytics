@@ -1,24 +1,33 @@
-[project]
-name = "analytical_pipeline"
+[tool.poetry]
+name = "analytical-pipeline"
 version = "0.0.1"
 description = "real-time stocks market analytical pipeline"
-authors = [
-    {name = "yuto82",email = "rgritsal@gmail.com"}
-]
-packages = [
-    { include = "market_analytics", from = "src" }
-]
+authors = ["yuto82 <rgritsal@gmail.com>"]
 readme = "README.md"
-requires-python = ">=3.11"
-dependencies = [
-    "python-dotenv (>=1.1.1,<2.0.0)",
-    "requests (>=2.32.4,<3.0.0)",
-    "websocket-client (>=1.8.0,<2.0.0)",
-    "pandas (>=2.3.1,<3.0.0)",
-    "numpy (>=2.3.2,<3.0.0)"
-]
+packages = [{include = "analytical_pipeline", from = "src"}]
 
+[tool.poetry.dependencies]
+python = "^3.11"
+python-dotenv = "^1.0.0"
+requests = "^2.32.0"
+websocket-client = "^1.8.0"
+pandas = "^2.3.0"
+numpy = "^2.3.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0.0"
+black = "^23.0.0"
+isort = "^5.12.0"
+flake8 = "^6.0.0"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+src_paths = ["src", "tests"]
