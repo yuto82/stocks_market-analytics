@@ -5,7 +5,7 @@ from typing import Optional
 from ..config.settings import Config
 from colorlog import ColoredFormatter
 
-def setup_logger(name: str, level: Optional[str] = None, enable_file_logging: Optional[bool] = True) -> logging.Logger:
+def setup_logger(name: str, level: Optional[str] = None, enable_console_logging: Optional[bool] = True, enable_file_logging: Optional[bool] = True) -> logging.Logger:
     logger = logging.getLogger(name)
     logger_level = level or Config.LOG_LEVEL
 
@@ -17,21 +17,22 @@ def setup_logger(name: str, level: Optional[str] = None, enable_file_logging: Op
 
     logger.handlers.clear()
 
-    console_formatter = ColoredFormatter(
-        fmt = "%(log_color)s[%(asctime)s] - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        log_colors={
-            "DEBUG": "cyan",
-            "INFO": "green",
-            "WARNING": "yellow",
-            "ERROR": "red",
-            "CRITICAL": "bold_red",
-            }
-        )
-    
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(console_formatter)
-    logger.addHandler(console_handler)
+    if enable_console_logging:
+        console_formatter = ColoredFormatter(
+            fmt = "%(log_color)s[%(asctime)s] - %(name)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+            log_colors={
+                "DEBUG": "cyan",
+                "INFO": "green",
+                "WARNING": "yellow",
+                "ERROR": "red",
+                "CRITICAL": "bold_red",
+                }
+            )
+        
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(console_formatter)
+        logger.addHandler(console_handler)
 
     if enable_file_logging:
         log_path = Path("logs")

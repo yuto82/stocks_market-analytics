@@ -6,7 +6,11 @@ load_dotenv()
 class Config:
     # Polygon.io
     POLYGON_API_KEY = os.getenv("POLYGON_API_KEY", "")
-    POLYGON_BASE_URL = os.getenv("POLYGON_BASE_URL", "https://api.polygon.io")
+    POLYGON_WS_URL = os.getenv("POLYGON_WS_URL", "")
+
+    #Twelve Data
+    TWELVE_DATA_API_KEY = os.getenv("TWELVE_DATA_API_KEY", "")
+    TWELVE_DATA_WS_URL = os.getenv("TWELVE_DATA_WS_URL", "wss://ws.twelvedata.com/v1/quotes/price")
 
     # Kafka
     KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
@@ -18,6 +22,11 @@ class Config:
 
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+    # Symbols
+    STOCK_SYMBOLS = [
+    "AAPL", "GOOGL", "NVDA"
+    ]
 
     @classmethod
     def validate_required_env_variables(cls):
