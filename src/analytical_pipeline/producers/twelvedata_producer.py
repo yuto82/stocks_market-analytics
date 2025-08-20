@@ -254,7 +254,7 @@ class TwelveDataWebSocketClient:
         
         self.api_key = Config.TWELVE_DATA_API_KEY
         self.ws_url = Config.TWELVE_DATA_WS_URL
-        self.symbols = Config.STOCK_SYMBOLS
+        self.symbols = ",".join(Config.STOCK_SYMBOLS)
         
         self.stats = {
             'messages_received': 0,
@@ -299,7 +299,6 @@ class TwelveDataWebSocketClient:
                 self.kafka_producer, 
                 Config.KAFKA_TOPICS
             )
-            
             self.logger.info("Kafka producer initialized successfully")
             return True
             
@@ -318,6 +317,9 @@ class TwelveDataWebSocketClient:
         )
     
     def on_message(self, ws, message: str):
+
+        print(f"RAW: {message}")
+        
         self.stats['messages_received'] += 1
         
         try:
@@ -426,7 +428,6 @@ def main():
         sys.exit(1)
     finally:
         client.stop()
-
 
 if __name__ == "__main__":
     main()

@@ -24,7 +24,8 @@ class Config:
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
     # Symbols
-    STOCK_SYMBOLS = "BTC/USD"
+    STOCK_SYMBOLS = ["BTC/USD"]
+    # STOCK_SYMBOLS = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA"]
 
     @classmethod
     def validate_required_env_variables(cls):

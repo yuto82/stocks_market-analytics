@@ -10,8 +10,8 @@ how to set-up poetry:
 9. deactivate
 
 
-
 created docker-compose.yml
+
 docker-compose up -d
 
 docker exec -it $(docker ps -qf "ancestor=confluentinc/cp-kafka:7.5.0") \
@@ -20,7 +20,7 @@ docker exec -it $(docker ps -qf "ancestor=confluentinc/cp-kafka:7.5.0") \
 docker exec -it $(docker ps -qf "ancestor=confluentinc/cp-kafka:7.5.0") \
   kafka-topics --delete --topic test-topic --bootstrap-server localhost:9092
 
-  docker exec -it $(docker ps -qf "ancestor=confluentinc/cp-kafka:7.5.0") \
+docker exec -it $(docker ps -qf "ancestor=confluentinc/cp-kafka:7.5.0") \
   kafka-topics --list --bootstrap-server localhost:9092
 
 docker compose down --volumes --rmi all
