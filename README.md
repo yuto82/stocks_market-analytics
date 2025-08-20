@@ -8,3 +8,19 @@ how to set-up poetry:
 7. poetry env info --path
 8. source .../.venv/bin/activate
 9. deactivate
+
+
+
+created docker-compose.yml
+docker-compose up -d
+
+docker exec -it $(docker ps -qf "ancestor=confluentinc/cp-kafka:7.5.0") \
+  kafka-topics --create --topic test-topic --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+
+docker exec -it $(docker ps -qf "ancestor=confluentinc/cp-kafka:7.5.0") \
+  kafka-topics --delete --topic test-topic --bootstrap-server localhost:9092
+
+  docker exec -it $(docker ps -qf "ancestor=confluentinc/cp-kafka:7.5.0") \
+  kafka-topics --list --bootstrap-server localhost:9092
+
+docker compose down --volumes --rmi all

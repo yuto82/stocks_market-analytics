@@ -26,3 +26,5 @@ build/
 Thumbs.db
 
 EOF
+
+docker-compose.yml
