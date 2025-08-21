@@ -19,9 +19,12 @@ class Config:
         "quotes": "stock-quotes",
         "aggregates": "stock-aggregates"
     }
+    CHECKPOINT_LOCATION = "/Users/ramanhrytsal/Desktop/stocks_market_analytics/stocks_market-analytics/src/analytical_pipeline/consumers/checkpoint"
 
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+    PRODUCER_LOGGER = "producer_logger"
+    CONSUMER_LOGGER = "consumer_logger"
 
     # Symbols
     # STOCK_SYMBOLS = ["BTC/USD"]
