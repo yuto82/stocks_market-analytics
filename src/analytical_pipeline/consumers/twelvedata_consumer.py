@@ -14,26 +14,41 @@ if __name__ == '__main__':
         .config("spark.sql.execution.arrow.pyspark.enabled", "true")
         .getOrCreate()
     )
-
-
     spark.sparkContext.setLogLevel("WARN")
 
     sample_df = (
-        spark.readStream
-        .format("Kafka")
-        .option("kafka.bootstrap.servers", "localhost:9092")
-        .option("subscribe", "stock-quotes")
-        .option("startingOffsets", "latest")
+        spark.readStream 
+        .format("Kafka") 
+        .option("kafka.bootstrap.servers", "localhost:9092") 
+        .option("subscribe", "stock-quotes") 
+        .option("startingOffsets", "latest") 
         .load()
     )
 
-    df = sample_df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
+    schema = StructType([
+        StructField("symbol", StringType()),
+        StructField("price", DoubleType()),
+        StructField("volume", DoubleType()),
+        StructField("timestamp", LongType()),
+        StructField("message_type", StringType()),
+        StructField("source", StringType()),
+        StructField("processed_at", StringType())
+    ])
 
-    query = (
-        df.writeStream
+    parsed_df = sample_df.selectExpr(
+        "CAST(key AS STRING) as symbol",
+        "CAST(value AS STRING) as raw_value"
+    )
+
+    final_df = parsed_df.withColumn("data", from_json(col("raw_value"), schema)) \
+                       .select("symbol", "data.*")
+
+    console_query = (
+        final_df.writeStream
         .format("console")
         .option("truncate", False)
+        .outputMode("append")
         .start()
     )
 
-    query.awaitTermination()
+    console_query.awaitTermination()
