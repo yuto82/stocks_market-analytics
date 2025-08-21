@@ -289,14 +289,14 @@ class TwelveDataWebSocketClient:
                 # 'delivery_timeout_ms': 120000,
                 # 'batch_size': 16384,
                 # 'linger_ms': 10,
-                # 'compression_type': 'gzip',
+                # 'compression_type': 'snappy',
                 # 'max_in_flight_requests_per_connection': 5,
                 # 'enable_idempotence': True
             }
             
             self.kafka_producer = KafkaProducer(**producer_config)
             self.message_router = KafkaMessageRouter(
-                self.kafka_producer, 
+                self.kafka_producer,
                 Config.KAFKA_TOPICS
             )
             self.logger.info("Kafka producer initialized successfully")
@@ -319,7 +319,7 @@ class TwelveDataWebSocketClient:
     def on_message(self, ws, message: str):
 
         print(f"RAW: {message}")
-        
+
         self.stats['messages_received'] += 1
         
         try:
