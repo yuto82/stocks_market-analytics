@@ -19,7 +19,7 @@ class Config:
         "quotes": "stock-quotes",
         "aggregates": "stock-aggregates"
     }
-    CHECKPOINT_LOCATION = "/Users/ramanhrytsal/Desktop/stocks_market_analytics/stocks_market-analytics/src/analytical_pipeline/consumers/checkpoint"
+    CHECKPOINT_LOCATION = os.getenv("CHECKPOINT_LOCATION", "")
 
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -27,8 +27,8 @@ class Config:
     CONSUMER_LOGGER = "consumer_logger"
 
     # Symbols
-    # STOCK_SYMBOLS = ["BTC/USD"]
-    STOCK_SYMBOLS = ["AAPL"]
+    STOCK_SYMBOLS = ["BTC/USD"]
+    # STOCK_SYMBOLS = ["AAPL"]
 
     @classmethod
     def validate_required_env_variables(cls):
