@@ -17,7 +17,9 @@ class Config:
     KAFKA_TOPICS = {
         "trades": "stock-trades",
         "quotes": "stock-quotes",
-        "aggregates": "stock-aggregates"
+        "aggregates": "stock-aggregates",
+        "heartbeat": "stock-heartbeat",
+        "status": "stock-status"
     }
     CHECKPOINT_LOCATION = os.getenv("CHECKPOINT_LOCATION", "")
 

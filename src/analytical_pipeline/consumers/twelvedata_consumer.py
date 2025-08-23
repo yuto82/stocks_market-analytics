@@ -12,6 +12,8 @@ from typing import Dict, List, Optional
 from analytical_pipeline.config.settings import Config
 from analytical_pipeline.utils.logger import spark_logger
 
+from kafka.admin import KafkaAdminClient
+
 @dataclass
 class StockMessage:
     symbol: str
@@ -48,10 +50,10 @@ class TwelveDataConsumer:
         self._running = True
 
     def _setup_signal_handlers(self):
-        signal.signal(signal.SIGINT, self._signal_handler)
-        signal.signal(signal.SIGTERM, self._signal_handler)
+        signal.signal(signal.SIGINT, self._handle_signal)
+        signal.signal(signal.SIGTERM, self._handle_signal)
     
-    def _signal_handler(self, signum):
+    def _handle_signal(self, signum, frame):
         self.logger.info(f"Received signal {signum}, initiating graceful shutdown...")
         self._running = False
         self.stop_all_streams()
@@ -104,6 +106,34 @@ class TwelveDataConsumer:
         except Exception as e:
             self.logger.error(f"Failed to create Kafka stream: {e}")
             raise
+
+    def _get_existing_topics(self, requested_topics: List[str]) -> List[str]:
+        try:
+            
+            admin_client = KafkaAdminClient(
+                bootstrap_servers=Config.KAFKA_BOOTSTRAP_SERVERS,
+                client_id='topic-checker'
+            )
+            
+            all_topics = admin_client.list_topics()
+            admin_client.close()
+            
+            existing_topics = [topic for topic in requested_topics if topic in all_topics]
+            
+            if existing_topics:
+                self.logger.info(f"Found existing topics: {existing_topics}")
+            else:
+                self.logger.warning("No existing topics found from requested list")
+            
+            non_existing = [topic for topic in requested_topics if topic not in all_topics]
+            if non_existing:
+                self.logger.warning(f"Topics not found in Kafka: {non_existing}")
+            
+            return existing_topics
+            
+        except Exception as e:
+            self.logger.error(f"Failed to check existing topics: {e}")
+            return []
 
     def _parse_kafka_messages(self, df: DataFrame, schema: StructType = StockMessage.schema()) -> DataFrame:
         try:
@@ -168,12 +198,15 @@ class TwelveDataConsumer:
         try:
             self.spark = self._create_spark_session()
             
-            # topics = list(self.kafka_topics.values())
-
-            topics = ["stock-quotes"]
+            requested_topics = list(self.kafka_topics.values())
+            existing_topics = self._get_existing_topics(requested_topics)
             
-            self.logger.info(f"Starting streaming pipeline for topics: {topics}")
-            kafka_stream = self._create_kafka_stream(topics)
+            if not existing_topics:
+                self.logger.error("No existing topics found. Cannot start streaming pipeline.")
+                return
+            
+            self.logger.info(f"Starting streaming pipeline for existing topics: {existing_topics}")
+            kafka_stream = self._create_kafka_stream(existing_topics)
             parsed_stream = self._parse_kafka_messages(kafka_stream)
             
             if enable_console:

@@ -271,7 +271,7 @@ class TwelveDataWebSocketClient:
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
     
-    def _signal_handler(self, signum):
+    def _signal_handler(self, signum, frame):
         self.logger.info(f"Received signal {signum}, initiating graceful shutdown...")
         self._running = False
         self.stop()
