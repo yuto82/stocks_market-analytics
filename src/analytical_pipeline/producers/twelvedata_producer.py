@@ -12,7 +12,9 @@ from kafka import KafkaProducer
 from kafka.errors import KafkaError
 
 from analytical_pipeline.config.settings import Config
-from analytical_pipeline.utils.logger import twelvedata_logger
+from analytical_pipeline.utils.logger import setup_logger
+
+twelvedata_logger = setup_logger("kafka")
 
 class MessageType(Enum):
     """
@@ -424,29 +426,38 @@ class TwelveDataWebSocketClient:
         """
         try:
             producer_config = {
-                'bootstrap_servers': Config.KAFKA_BOOTSTRAP_SERVERS.split(','),
-                'value_serializer': lambda v: json.dumps(v).encode('utf-8'),
-                'key_serializer': lambda k: k.encode('utf-8') if k else None,
-                # 'acks': 'all',  
-                # 'retries': 3,
-                # 'retry_backoff_ms': 1000,
-                # 'request_timeout_ms': 30000,
-                # 'delivery_timeout_ms': 120000,
-                # 'batch_size': 16384,
-                # 'linger_ms': 10,
-                # 'compression_type': 'snappy',
-                # 'max_in_flight_requests_per_connection': 5,
-                # 'enable_idempotence': True
+                # Kafka cluster connection settings
+                'bootstrap_servers': Config.KAFKA_BOOTSTRAP_SERVERS.split(','),     # List of Kafka broker addresses to connect to
+
+                # Data serialization settings
+                'value_serializer': lambda v: json.dumps(v).encode('utf-8'),    # Converts message values to JSON and encodes as UTF-8 bytes
+                'key_serializer': lambda k: k.encode('utf-8') if k else None,    # Encodes message keys as UTF-8 bytes, handles None keys
+
+                # Reliability and acknowledgment settings
+                'acks': 'all',                  # Wait for acknowledgment from all in-sync replicas before considering message sent (highest reliability)
+                'retries': 3,                  # Number of retry attempts if message sending fails
+                'retry_backoff_ms': 1000,           # Wait time (1 second) between retry attempts
+                'request_timeout_ms': 30000,            # Maximum time (30 seconds) to wait for a response from broker
+                'delivery_timeout_ms': 120000,              # Total time limit (2 minutes) for message delivery including retries
+
+                # Performance optimization settings
+                'batch_size': 16384,                            # Maximum size (16KB) of message batches to improve throughput
+                'linger_ms': 10,                            # Wait up to 10ms to batch messages together for better efficiency
+                'compression_type': 'snappy',                       # Use Snappy compression to reduce network bandwidth usage
+                'max_in_flight_requests_per_connection': 1,             # Maximum number of unacknowledged requests per connection
+
+                # Data consistency settings
+                'enable_idempotence': True      # Ensures exactly-once delivery semantics, prevents duplicate messages
             }
             
             self.kafka_producer = KafkaProducer(**producer_config)
+
             self.message_router = KafkaMessageRouter(
                 self.kafka_producer,
                 Config.KAFKA_TOPICS
             )
             self.logger.info("Kafka producer initialized successfully")
             return True
-            
         except Exception as e:
             self.logger.error(f"Failed to setup Kafka producer: {e}")
             return False
@@ -479,7 +490,6 @@ class TwelveDataWebSocketClient:
             - Routes parsed messages to Kafka.
             - Updates statistics and logs progress every 100 messages.
         """
-        # print(f"RAW: {message}")
         self.stats['messages_received'] += 1
         
         try:
@@ -599,17 +609,18 @@ class TwelveDataWebSocketClient:
             return False
         
         try:
-            websocket.enableTrace(False)
+            websocket.enableTrace(False)    # Disable detailed WebSocket frame and protocol logging for cleaner output
+
             self.ws = websocket.WebSocketApp(
                 url=f"{self.ws_url}?apikey={self.api_key}",
-                on_open=self.on_open,
-                on_message=self.on_message,
-                on_error=self.on_error,
-                on_close=self.on_close,
+                on_message=self.on_message,    # Callback function triggered when a message is received from the server
+                on_open=self.on_open,           # Callback function triggered when WebSocket connection is successfully established
+                on_error=self.on_error,       # Callback function triggered when an error occurs during WebSocket communication
+                on_close=self.on_close,     # Callback function triggered when WebSocket connection is closed
             )
             
             self.logger.info("Starting WebSocket client...")
-            self.ws.run_forever()
+            self.ws.run_forever()   # Start WebSocket connection and run infinite loop to listen for messages
             return True
             
         except Exception as e:

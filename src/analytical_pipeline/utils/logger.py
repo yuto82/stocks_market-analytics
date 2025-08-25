@@ -54,8 +54,3 @@ def setup_logger(name: str, level: Optional[str] = None, enable_console_logging:
     logger.propagate = False
 
     return logger
-
-twelvedata_logger = setup_logger("twelvedata_logger")
-# kafka_logger = setup_logger("kafka_consumer")
-spark_logger = setup_logger("spark_processor")
-# snowflake_logger = setup_logger("snowflake_connector")

@@ -10,7 +10,9 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from analytical_pipeline.config.settings import Config
-from analytical_pipeline.utils.logger import spark_logger
+from analytical_pipeline.utils.logger import setup_logger
+
+spark_logger = setup_logger("spark")
 
 from kafka.admin import KafkaAdminClient
 
