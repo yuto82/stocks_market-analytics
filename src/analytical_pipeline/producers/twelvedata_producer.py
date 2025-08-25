@@ -164,8 +164,36 @@ class KafkaMessageRouter:
         )
     
 class MessageParser:    
+    """
+    Utility class for parsing raw JSON messages into StockMessage objects.
+
+    This parser is designed to handle different types of messages coming from 
+    a market data stream. It can detect and parse heartbeat signals, status 
+    updates, and price messages containing symbol, price, volume, and timestamp.
+
+    The parsing logic is fault-tolerant: if a message cannot be decoded 
+    or does not match expected formats, the parser returns None.
+    """
     @staticmethod
     def parse(raw_message: str) -> Optional[StockMessage]:
+        """
+        Parse a raw JSON message into a StockMessage object.
+
+        The method determines the type of the message (heartbeat, status, price)
+        and extracts relevant fields accordingly. If the message cannot be parsed, 
+        it returns None.
+
+        Args:
+            raw_message (str): Raw JSON string representing the incoming message.
+
+        Returns:
+            Optional[StockMessage]: Parsed StockMessage object if successful,
+            otherwise None.
+
+        Raises:
+            json.JSONDecodeError: If the raw message is not valid JSON.
+            KeyError: If required keys are missing from the message.
+        """
         try:
             data = json.loads(raw_message)
             
@@ -199,6 +227,18 @@ class MessageParser:
     
     @staticmethod
     def _extract_symbol(data: Dict[str, Any]) -> Optional[str]:
+        """
+        Extract the trading symbol from message data.
+
+        The method tries multiple possible fields (e.g., "symbol", "s", "ticker", 
+        "instrument"). If no symbol is found, returns None.
+
+        Args:
+            data (Dict[str, Any]): Parsed JSON message data.
+
+        Returns:
+            Optional[str]: Uppercased trading symbol if found, otherwise None.
+        """
         possible_fields = ["symbol", "s", "ticker", "instrument"]
         for field in possible_fields:
             if symbol := data.get(field):
@@ -207,6 +247,18 @@ class MessageParser:
     
     @staticmethod
     def _extract_price(data: Dict[str, Any]) -> Optional[float]:
+        """
+        Extract the price value from message data.
+
+        Checks multiple possible fields (e.g., "price", "p", "last", "close"). 
+        Attempts to cast the value to float.
+
+        Args:
+            data (Dict[str, Any]): Parsed JSON message data.
+
+        Returns:
+            Optional[float]: Price value as a float if available, otherwise None.
+        """
         possible_fields = ["price", "p", "last", "close"]
         for field in possible_fields:
             if price := data.get(field):
@@ -218,6 +270,18 @@ class MessageParser:
     
     @staticmethod
     def _extract_volume(data: Dict[str, Any]) -> Optional[float]:
+        """
+        Extract the volume value from message data.
+
+        Checks multiple possible fields (e.g., "volume", "v", "vol").
+        Attempts to cast the value to float.
+
+        Args:
+            data (Dict[str, Any]): Parsed JSON message data.
+
+        Returns:
+            Optional[float]: Volume value as a float if available, otherwise None.
+        """
         possible_fields = ["volume", "v", "vol"]
         for field in possible_fields:
             if volume := data.get(field):
@@ -229,6 +293,18 @@ class MessageParser:
     
     @staticmethod
     def _extract_timestamp(data: Dict[str, Any]) -> Optional[str]:
+        """
+        Extract the timestamp from message data.
+
+        Checks multiple possible fields (e.g., "timestamp", "t", "time", "ts").
+        Returns the value as a string.
+
+        Args:
+            data (Dict[str, Any]): Parsed JSON message data.
+
+        Returns:
+            Optional[str]: Timestamp string if available, otherwise None.
+        """
         possible_fields = ["timestamp", "t", "time", "ts"]
         for field in possible_fields:
             if timestamp := data.get(field):
@@ -237,16 +313,64 @@ class MessageParser:
     
     @staticmethod
     def _is_heartbeat(data: Dict[str, Any]) -> bool:
+        """
+        Check whether the message is a heartbeat signal.
+
+        Heartbeat indicators include "heartbeat", "ping", and "keepalive".
+
+        Args:
+            data (Dict[str, Any]): Parsed JSON message data.
+
+        Returns:
+            bool: True if the message indicates a heartbeat, False otherwise.
+        """
         heartbeat_indicators = ["heartbeat", "ping", "keepalive"]
         return any(indicator in str(data).lower() for indicator in heartbeat_indicators)
     
     @staticmethod
     def _is_status_message(data: Dict[str, Any]) -> bool:
+        """
+        Check whether the message is a status update.
+
+        Status indicators include "status", "connection", "subscribed", "error".
+
+        Args:
+            data (Dict[str, Any]): Parsed JSON message data.
+
+        Returns:
+            bool: True if the message indicates a status update, False otherwise.
+        """
         status_indicators = ["status", "connection", "subscribed", "error"]
         return any(indicator in str(data).lower() for indicator in status_indicators)
 
 class TwelveDataWebSocketClient:
+    """
+    WebSocket client for consuming real-time stock data from Twelve Data API 
+    and forwarding parsed messages into Apache Kafka.
+
+    This client:
+    - Connects to the Twelve Data WebSocket endpoint.
+    - Subscribes to configured stock symbols.
+    - Parses incoming messages via MessageParser.
+    - Routes valid messages to Kafka through KafkaMessageRouter.
+    - Tracks statistics (messages received, sent, failed, errors).
+    - Handles graceful shutdown on termination signals (SIGINT, SIGTERM).
+    """
     def __init__(self):
+        """
+        Initialize the WebSocket client and setup configuration.
+
+        Attributes:
+            ws (Optional[websocket.WebSocketApp]): WebSocket connection instance.
+            kafka_producer (Optional[KafkaProducer]): Kafka producer instance.
+            message_router (Optional[KafkaMessageRouter]): Router to send messages to Kafka.
+            logger (logging.Logger): Application logger.
+            api_key (str): Twelve Data API key.
+            ws_url (str): WebSocket URL for Twelve Data.
+            symbols (str): Comma-separated list of subscribed stock symbols.
+            stats (Dict[str, Any]): Runtime statistics (messages, errors, uptime).
+            _running (bool): Indicates whether the client is running.
+        """
         self.ws: Optional[websocket.WebSocketApp] = None
         self.kafka_producer: Optional[KafkaProducer] = None
         self.message_router: Optional[KafkaMessageRouter] = None
@@ -268,15 +392,36 @@ class TwelveDataWebSocketClient:
         self._running = True
         
     def _setup_signal_handlers(self):
+        """
+        Register signal handlers for SIGINT and SIGTERM.
+
+        Ensures graceful shutdown when termination signals are received.
+        """
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
     
     def _signal_handler(self, signum, frame):
+        """
+        Handle termination signals.
+
+        Args:
+            signum (int): Signal number.
+            frame (FrameType): Current stack frame.
+
+        Side Effects:
+            Stops the WebSocket client and triggers cleanup.
+        """
         self.logger.info(f"Received signal {signum}, initiating graceful shutdown...")
         self._running = False
         self.stop()
     
     def _setup_kafka_producer(self) -> bool:
+        """
+        Initialize Kafka producer and message router.
+
+        Returns:
+            bool: True if Kafka producer was initialized successfully, False otherwise.
+        """
         try:
             producer_config = {
                 'bootstrap_servers': Config.KAFKA_BOOTSTRAP_SERVERS.split(','),
@@ -307,6 +452,10 @@ class TwelveDataWebSocketClient:
             return False
     
     def _log_statistics(self):
+        """
+        Log runtime statistics including number of messages received, 
+        sent to Kafka, failed, and connection errors.
+        """
         runtime = time.time() - self.stats['start_time']
         self.logger.info(
             f"Statistics - Runtime: {runtime:.1f}s, "
@@ -317,9 +466,20 @@ class TwelveDataWebSocketClient:
         )
     
     def on_message(self, ws, message: str):
+        """
+        Callback triggered when a new WebSocket message is received.
 
-        print(f"RAW: {message}")
+        Args:
+            ws (websocket.WebSocketApp): WebSocket instance.
+            message (str): Raw JSON message received.
 
+        Behavior:
+            - Increments received message counter.
+            - Parses the message with MessageParser.
+            - Routes parsed messages to Kafka.
+            - Updates statistics and logs progress every 100 messages.
+        """
+        # print(f"RAW: {message}")
         self.stats['messages_received'] += 1
         
         try:
@@ -346,10 +506,31 @@ class TwelveDataWebSocketClient:
             self.stats['messages_failed'] += 1
     
     def on_error(self, ws, error):
+        """
+        Callback triggered when a WebSocket error occurs.
+
+        Args:
+            ws (websocket.WebSocketApp): WebSocket instance.
+            error (Exception): Error encountered.
+
+        Side Effects:
+            Logs the error and increments connection error counter.
+        """
         self.stats['connection_errors'] += 1
         self.logger.error(f"WebSocket error: {error}")
     
     def on_close(self, ws, close_status_code, close_msg):
+        """
+        Callback triggered when WebSocket connection closes.
+
+        Args:
+            ws (websocket.WebSocketApp): WebSocket instance.
+            close_status_code (int): WebSocket close status code.
+            close_msg (str): Close message reason.
+
+        Side Effects:
+            Logs closure details and cleans up resources.
+        """
         self.logger.info(
             f"WebSocket connection closed - Code: {close_status_code}, "
             f"Message: {close_msg}"
@@ -357,6 +538,15 @@ class TwelveDataWebSocketClient:
         self._cleanup_resources()
     
     def on_open(self, ws):
+        """
+        Callback triggered when WebSocket connection is successfully opened.
+
+        Args:
+            ws (websocket.WebSocketApp): WebSocket instance.
+
+        Behavior:
+            Sends subscription request to Twelve Data with configured symbols and API key.
+        """
         self.logger.info("WebSocket connection opened")
         payload = {
             "action": "subscribe",
@@ -373,6 +563,13 @@ class TwelveDataWebSocketClient:
             self.logger.error(f"Failed to send subscription: {e}")
     
     def _cleanup_resources(self):
+        """
+        Flush and close Kafka producer safely.
+
+        Side Effects:
+            Ensures no unsent messages remain in Kafka buffers.
+            Logs final statistics.
+        """
         try:
             if self.kafka_producer:
                 self.logger.info("Flushing Kafka producer...")
@@ -385,6 +582,18 @@ class TwelveDataWebSocketClient:
         self._log_statistics()
     
     def start(self) -> bool:
+        """
+        Start the Twelve Data WebSocket client.
+
+        Steps:
+            - Setup Kafka producer.
+            - Initialize WebSocket connection.
+            - Subscribe to stock symbols.
+            - Start event loop.
+
+        Returns:
+            bool: True if WebSocket started successfully, False otherwise.
+        """
         if not self._setup_kafka_producer():
             self.logger.error("Failed to setup Kafka producer, aborting...")
             return False
@@ -408,6 +617,14 @@ class TwelveDataWebSocketClient:
             return False
     
     def stop(self):
+        """
+        Stop the Twelve Data WebSocket client.
+
+        Behavior:
+            - Closes the WebSocket connection if active.
+            - Cleans up Kafka resources.
+            - Marks the client as not running.
+        """
         self._running = False
         if self.ws:
             self.ws.close()
@@ -415,6 +632,16 @@ class TwelveDataWebSocketClient:
 
 
 def main():
+    """
+    Entry point for running the TwelveData WebSocket client.
+
+    Behavior:
+        - Initializes the TwelveDataWebSocketClient.
+        - Starts the WebSocket connection and Kafka producer.
+        - Handles graceful shutdown on KeyboardInterrupt.
+        - Logs unexpected errors and exits with status 1.
+        - Ensures resources are properly cleaned up on exit.
+    """
     client = TwelveDataWebSocketClient()
     
     try:
